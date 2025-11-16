@@ -11,9 +11,11 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Image,
+  ActivityIndicator,
  } from 'react-native';
  import { SafeAreaView } from 'react-native-safe-area-context';
  import React, { useState, useEffect, useRef } from 'react';
+ import { API_URL } from '@env';
  
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
@@ -23,6 +25,7 @@ export default function App() {
   const [username, setUsername] = useState('');
   const [displayedText, setDisplayedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isValid = emailRegex.test(email);
   const shift = useRef(new Animated.Value(0)).current;
@@ -113,6 +116,98 @@ export default function App() {
       keyboardDidHide.remove();
     };
   }, [shift]);
+
+  // Validation function
+  const validateCreateAccount = () => {
+    if (!username.trim()) {
+      Alert.alert("Validation Error", "Please enter a username");
+      return false;
+    }
+    if (!isValid) {
+      Alert.alert("Validation Error", "Please enter a valid email address");
+      return false;
+    }
+    if (password.length < 8) {
+      Alert.alert("Validation Error", "Password must be at least 8 characters");
+      return false;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Validation Error", "Passwords do not match");
+      return false;
+    }
+    return true;
+  };
+
+  // Create account function
+  const handleCreateAccount = async () => {
+    if (!validateCreateAccount()) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          Username: username,
+          Password: password,
+          Email: email,
+        }),
+      });
+
+      const responseText = await response.text();
+
+      // Handle specific status codes
+      if (response.status === 200) {
+        Alert.alert(
+          "Email Sent!", 
+          "Please verify your email before logging in.", 
+          [
+            {
+              text: "Okay", 
+              onPress: () => {
+                // Clear form
+                setUsername('');
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+                // Navigate to login
+                setCurrentScreen('login');
+              }
+            }
+          ]
+        );
+      } else if (response.status === 885 || responseText === '885') {
+        Alert.alert(
+          "Email in use.", 
+          "This email is already registered or a verification email has already been sent to this address. Please wait 10 minutes before trying again."
+        );
+      } else if (response.status === 500 || responseText === '500') {
+        Alert.alert(
+          "Server Unavailable", 
+          "The server is temporarily down and will be back up as soon as possible. Please try again later."
+        );
+      } else {
+        // Handle any other error response
+        Alert.alert(
+          "Error", 
+          "An unexpected error occurred. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      Alert.alert(
+        "Network Error", 
+        "Unable to connect to the server. Please check your internet connection and try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const renderLoginScreen = () => (
     <View>
@@ -190,6 +285,7 @@ export default function App() {
         placeholder="Enter your username"
         placeholderTextColor="#aaaaaa"
         autoCapitalize="none"
+        editable={!isLoading}
       />
       <Text style={styles.align_left}>Email</Text>
       <TextInput
@@ -203,6 +299,7 @@ export default function App() {
         placeholderTextColor="#aaaaaa"
         autoCapitalize="none"
         keyboardType="email-address"
+        editable={!isLoading}
       />
       <Text style={styles.align_left}>Password</Text>
       <TextInput
@@ -216,6 +313,7 @@ export default function App() {
         placeholderTextColor="#aaaaaa"
         autoCapitalize="none"
         secureTextEntry={true}
+        editable={!isLoading}
       />
       <Text style={styles.align_left}>Confirm Password</Text>
       <TextInput
@@ -229,18 +327,23 @@ export default function App() {
         placeholderTextColor="#aaaaaa"
         autoCapitalize="none"
         secureTextEntry={true}
+        editable={!isLoading}
       />
       <TouchableOpacity
-        style={styles.GoodButton}
-        onPress={() => Alert.alert("Success", "Account created!", [
-          {text: "Okay", onPress: () => setCurrentScreen('login')}
-        ])}>
-        <Text style={styles.buttonText}>Create Account</Text>
+        style={[styles.GoodButton, isLoading && styles.disabledButton]}
+        onPress={handleCreateAccount}
+        disabled={isLoading}>
+        {isLoading ? (
+          <ActivityIndicator color="#eceefaff" />
+        ) : (
+          <Text style={styles.buttonText}>Create Account</Text>
+        )}
       </TouchableOpacity>
       
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => setCurrentScreen('login')}>
+        onPress={() => setCurrentScreen('login')}
+        disabled={isLoading}>
         <Text style={styles.backButtonText}>Back to Login</Text>
       </TouchableOpacity>
     </View>
@@ -287,6 +390,9 @@ const styles = StyleSheet.create({
    alignItems: 'center',
    marginTop: 20,
    width: 400,
+ },
+ disabledButton: {
+   opacity: 0.6,
  },
  buttonText: {
     color: "#eceefaff",
