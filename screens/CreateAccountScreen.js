@@ -19,8 +19,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { API_URL } from '@env';
 import Svg, { Path } from 'react-native-svg';
+import { GlobalStyles, SCREEN_DIMENSIONS } from './GlobalStyles';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = SCREEN_DIMENSIONS;
 
 export default function CreateAccountScreen({ onNavigateToLogin }) {
   const [email, setEmail] = useState('');
@@ -176,13 +177,13 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <LinearGradient
             colors={['#f4c542', '#fef3c7', '#ffffff']}
-            style={styles.container}
+            style={GlobalStyles.container}
           >
             {/* The diamond shape */}
             <Svg
                       height={SCREEN_HEIGHT}
                       width={SCREEN_WIDTH}
-                      style={styles.backgroundSvg}
+                      style={GlobalStyles.backgroundSvg}
                     >
                       {/* Top inverted V (^ shape) - starts from top center, goes to middle edges */}
                       <Path
@@ -197,11 +198,11 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
                     </Svg>
 
             <View style={styles.contentContainer}>
-              <Text style={styles.loginText}>Create Account</Text>
+              <Text style={GlobalStyles.loginText}>Create Account</Text>
               
-              <Text style={styles.align_left}>Username</Text>
+              <Text style={GlobalStyles.align_left}>Username</Text>
               <TextInput
-                style={[styles.inputText, { width: contentWidth }]}
+                style={[GlobalStyles.inputText, { width: contentWidth }]}
                 onChangeText={setUsername}
                 value={username}
                 placeholder="Enter your username"
@@ -213,12 +214,12 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
                 keyboardAppearance="default"
               />
               
-              <Text style={styles.align_left}>Email</Text>
+              <Text style={GlobalStyles.align_left}>Email</Text>
               <TextInput
                 style={[
-                  styles.inputText,
+                  GlobalStyles.inputText,
                   { width: contentWidth },
-                  !isValid && email.length > 0 ? styles.invalidInput : null,
+                  !isValid && email.length > 0 ? GlobalStyles.invalidInput : null,
                 ]}
                 onChangeText={setEmail}
                 value={email}
@@ -232,9 +233,9 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
                 keyboardAppearance="default"
               />
               
-              <Text style={styles.align_left}>Password</Text>
+              <Text style={GlobalStyles.align_left}>Password</Text>
               <TextInput
-                style={[styles.inputText, { width: contentWidth }]}
+                style={[GlobalStyles.inputText, { width: contentWidth }]}
                 onChangeText={setPassword}
                 value={password}
                 placeholder="Enter your password"
@@ -249,9 +250,9 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
                 autoCorrect={false}
               />
               
-              <Text style={styles.align_left}>Confirm Password</Text>
+              <Text style={GlobalStyles.align_left}>Confirm Password</Text>
               <TextInput
-               style={[styles.inputText, { width: contentWidth }]}
+               style={[GlobalStyles.inputText, { width: contentWidth }]}
                 onChangeText={setConfirmPassword}
                 value={confirmPassword}
                 placeholder="Confirm your password"
@@ -266,13 +267,13 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
               />
               
               <TouchableOpacity
-                style={[styles.GoodButton, { width: contentWidth }, isLoading && styles.disabledButton]}
+                style={[GlobalStyles.GoodButton, { width: contentWidth }, isLoading && GlobalStyles.disabledButton]}
                 onPress={handleCreateAccount}
                 disabled={isLoading}>
                 {isLoading ? (
                   <ActivityIndicator color="#eceefaff" />
                 ) : (
-                  <Text style={styles.buttonText}>Create Account</Text>
+                  <Text style={GlobalStyles.buttonText}>Create Account</Text>
                 )}
               </TouchableOpacity>
               
@@ -291,37 +292,10 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backgroundSvg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
   contentContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  GoodButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderColor: 'gray',
-    backgroundColor: '#020618ff',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "#eceefaff",
-    fontWeight: "bold",
-    fontSize: 18,
   },
   backButton: {
     paddingHorizontal: 20,
@@ -335,31 +309,5 @@ const styles = StyleSheet.create({
     color: "#020618ff",
     fontSize: 16,
     textDecorationLine: 'underline',
-  },
-  loginText: {
-    fontSize: 35,       
-    fontWeight: 'bold', 
-    fontFamily: 'Arial',
-    color: '#020618ff',
-    textAlign: 'center',
-  },
-  align_left: {
-    fontSize: 20,
-    alignSelf: 'flex-start',
-    marginTop: 15,
-    marginBottom: 5,
-  },
-  inputText: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-  },
-  invalidInput: {
-    textDecorationLine: "underline",
-    textDecorationColor: "red",
-    textDecorationStyle: "wavy",
   },
 });

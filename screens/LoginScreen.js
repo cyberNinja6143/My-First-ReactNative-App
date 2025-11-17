@@ -20,8 +20,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { API_URL } from '@env';
+import { GlobalStyles, SCREEN_DIMENSIONS } from './GlobalStyles';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = SCREEN_DIMENSIONS;
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount }) {
   const [email, setEmail] = useState('');
@@ -175,13 +176,13 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <LinearGradient
         colors={['#f4c542', '#fef3c7', '#ffffff']}
-        style={styles.container}
+        style={GlobalStyles.container}
       >
         {/* Background V shapes */}
         <Svg
           height={SCREEN_HEIGHT}
           width={SCREEN_WIDTH}
-          style={styles.backgroundSvg}
+          style={GlobalStyles.backgroundSvg}
         >
           {/* Top inverted V (^ shape) - starts from top center, goes to middle edges */}
           <Path
@@ -222,13 +223,13 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
                 </Animated.Text>
               )}
             </Text>
-            <Text style={styles.loginText}>Login</Text>
-            <Text style={[styles.align_left, { width: contentWidth }]}>Email</Text>
+            <Text style={GlobalStyles.loginText}>Login</Text>
+            <Text style={[GlobalStyles.align_left, { width: contentWidth }]}>Email</Text>
             <TextInput
               style={[
-                styles.inputText,
+                GlobalStyles.inputText,
                 { width: contentWidth },
-                !isValid && email.length > 0 ? styles.invalidInput : null,
+                !isValid && email.length > 0 ? GlobalStyles.invalidInput : null,
               ]}
               onChangeText={setEmail}
               value={email}
@@ -238,10 +239,10 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
               keyboardType="email-address"
               editable={!isLoading}
             />
-            <Text style={[styles.align_left, { width: contentWidth }]}>Password</Text>
+            <Text style={[GlobalStyles.align_left, { width: contentWidth }]}>Password</Text>
             <TextInput
               style={[
-                styles.inputText,
+                GlobalStyles.inputText,
                 { width: contentWidth },
                 password.length > 0 && password.length < 8,
               ]}
@@ -254,13 +255,13 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
               editable={!isLoading}
             />
             <TouchableOpacity
-              style={[styles.GoodButton, { width: contentWidth }, isLoading && styles.disabledButton]}
+              style={[GlobalStyles.GoodButton, { width: contentWidth }, isLoading && GlobalStyles.disabledButton]}
               onPress={handleLogin}
               disabled={isLoading}>
               {isLoading ? (
                 <ActivityIndicator color="#eceefaff" />
               ) : (
-                <Text style={styles.buttonText}>Login</Text>
+                <Text style={GlobalStyles.buttonText}>Login</Text>
               )}
             </TouchableOpacity>
             
@@ -284,36 +285,9 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backgroundSvg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
   assistantImage: {
     marginBottom: 10,
     alignSelf: 'center',
-  },
-  GoodButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderColor: 'gray',
-    backgroundColor: '#020618ff',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "#eceefaff",
-    fontWeight: "bold",
-    fontSize: 18,
   },
   createAccountButton: {
     paddingHorizontal: 20,
@@ -342,13 +316,6 @@ const styles = StyleSheet.create({
     color: '#0f0f0fff',
     fontSize: 16,
   },
-  loginText: {
-    fontSize: 35,       
-    fontWeight: 'bold', 
-    fontFamily: 'Arial',
-    color: '#020618ff',
-    textAlign: 'center',
-  },
   greetingText: {
     fontSize: 18,
     color: 'black',
@@ -362,24 +329,5 @@ const styles = StyleSheet.create({
   },
   cursor: {
     color: 'black',
-  },
-  align_left: {
-    fontSize: 20,
-    alignSelf: 'flex-start',
-    marginTop: 15,
-    marginBottom: 5,
-  },
-  inputText: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-  },
-  invalidInput: {
-    textDecorationLine: "underline",
-    textDecorationColor: "red",
-    textDecorationStyle: "wavy",
   },
 });
