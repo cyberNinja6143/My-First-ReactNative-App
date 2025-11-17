@@ -13,10 +13,15 @@ import {
   ActivityIndicator,
   Platform,
   Easing,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import { API_URL } from '@env';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount }) {
   const [email, setEmail] = useState('');
@@ -28,6 +33,10 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
   const isValid = emailRegex.test(email);
   const cursorOpacity = useRef(new Animated.Value(1)).current;
   const keyboardHeight = useRef(new Animated.Value(0)).current;
+
+  // Calculate responsive dimensions
+  const contentWidth = Math.min(SCREEN_WIDTH * 0.9, 400);
+  const imageSize = Math.min(SCREEN_WIDTH * 0.5, 200);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -164,13 +173,35 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
+      <LinearGradient
+        colors={['#f4c542', '#fef3c7', '#ffffff']}
+        style={styles.container}
+      >
+        {/* Background V shapes */}
+        <Svg
+          height={SCREEN_HEIGHT}
+          width={SCREEN_WIDTH}
+          style={styles.backgroundSvg}
+        >
+          {/* Top inverted V (^ shape) - starts from top center, goes to middle edges */}
+          <Path
+            d={`M ${SCREEN_WIDTH / 2} 0 L 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
+            fill="rgba(0, 0, 0, 0.08)"
+          />
+          {/* Bottom regular V (V shape) - starts from middle edges, goes to bottom center */}
+          <Path
+            d={`M 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH / 2} ${SCREEN_HEIGHT} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
+            fill="rgba(0, 0, 0, 0.08)"
+          />
+        </Svg>
+
         <SafeAreaView style={{ flex: 1 }}>
           <Animated.View
             style={{
               flex: 1,
               justifyContent: 'center',
               padding: 20,
+              alignItems: 'center',
               transform: [
                 { 
                   translateY: Animated.multiply(keyboardHeight, -0.3)
@@ -180,10 +211,10 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
           >
             <Image 
               source={require('../assets/app-pictures/assistant.png')}
-              style={styles.assistantImage}
+              style={[styles.assistantImage, { width: imageSize, height: imageSize }]}
               resizeMode="contain"
             />
-            <Text style={styles.greetingText}>
+            <Text style={[styles.greetingText, { maxWidth: contentWidth }]}>
               {displayedText}
               {showCursor && (
                 <Animated.Text style={[styles.cursor, { opacity: cursorOpacity }]}>
@@ -192,10 +223,11 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
               )}
             </Text>
             <Text style={styles.loginText}>Login</Text>
-            <Text style={styles.align_left}>Email</Text>
+            <Text style={[styles.align_left, { width: contentWidth }]}>Email</Text>
             <TextInput
               style={[
                 styles.inputText,
+                { width: contentWidth },
                 !isValid && email.length > 0 ? styles.invalidInput : null,
               ]}
               onChangeText={setEmail}
@@ -206,11 +238,12 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
               keyboardType="email-address"
               editable={!isLoading}
             />
-            <Text style={styles.align_left}>Password</Text>
+            <Text style={[styles.align_left, { width: contentWidth }]}>Password</Text>
             <TextInput
               style={[
                 styles.inputText,
-                password.length > 0 && password.length < 8 ? styles.invalidInput : null,
+                { width: contentWidth },
+                password.length > 0 && password.length < 8,
               ]}
               onChangeText={setPassword}
               value={password}
@@ -221,7 +254,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
               editable={!isLoading}
             />
             <TouchableOpacity
-              style={[styles.GoodButton, isLoading && styles.disabledButton]}
+              style={[styles.GoodButton, { width: contentWidth }, isLoading && styles.disabledButton]}
               onPress={handleLogin}
               disabled={isLoading}>
               {isLoading ? (
@@ -231,21 +264,21 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
               )}
             </TouchableOpacity>
             
-            <View style={styles.dividerContainer}>
+            <View style={[styles.dividerContainer, { width: contentWidth }]}>
               <View style={styles.divider} />
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.divider} />
             </View>
             
             <TouchableOpacity
-              style={styles.createAccountButton}
+              style={[styles.createAccountButton, { width: contentWidth }]}
               onPress={onNavigateToCreateAccount}
               disabled={isLoading}>
               <Text style={styles.createAccountText}>Create Account</Text>
             </TouchableOpacity>
           </Animated.View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
     </TouchableWithoutFeedback>
   );
 }
@@ -253,13 +286,15 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4c542',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  backgroundSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
   assistantImage: {
-    width: 200,
-    height: 200,
     marginBottom: 10,
     alignSelf: 'center',
   },
@@ -271,7 +306,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#020618ff',
     alignItems: 'center',
     marginTop: 20,
-    width: 400,
   },
   disabledButton: {
     opacity: 0.6,
@@ -287,7 +321,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#020618ff',
     alignItems: 'center',
-    width: 400,
   },
   createAccountText: {
     color: "#eceefaff",
@@ -317,7 +350,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   greetingText: {
-    maxWidth: 400,
     fontSize: 18,
     color: 'black',
     lineHeight: 22,
@@ -326,7 +358,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     letterSpacing: 0.3,
     paddingHorizontal: 5,
-    height: 66,
+    minHeight: 66,
   },
   cursor: {
     color: 'black',
@@ -339,7 +371,6 @@ const styles = StyleSheet.create({
   },
   inputText: {
     height: 40,
-    width: 400,
     borderColor: 'gray',
     borderWidth: 1,
     paddingHorizontal: 10,

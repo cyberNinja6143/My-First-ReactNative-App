@@ -13,9 +13,14 @@ import {
   Platform,
   Animated,
   Easing,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { API_URL } from '@env';
+import Svg, { Path } from 'react-native-svg';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function CreateAccountScreen({ onNavigateToLogin }) {
   const [email, setEmail] = useState('');
@@ -26,6 +31,9 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isValid = emailRegex.test(email);
   const keyboardHeight = useRef(new Animated.Value(0)).current;
+
+  // Calculate responsive dimensions
+  const contentWidth = Math.min(SCREEN_WIDTH * 0.9, 400);
 
   // This adds the keyboard, relies on default driver to promote consistancy.
   useEffect(() => {
@@ -166,13 +174,34 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
         }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.container}>
+          <LinearGradient
+            colors={['#f4c542', '#fef3c7', '#ffffff']}
+            style={styles.container}
+          >
+            {/* The diamond shape */}
+            <Svg
+                      height={SCREEN_HEIGHT}
+                      width={SCREEN_WIDTH}
+                      style={styles.backgroundSvg}
+                    >
+                      {/* Top inverted V (^ shape) - starts from top center, goes to middle edges */}
+                      <Path
+                        d={`M ${SCREEN_WIDTH / 2} 0 L 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
+                        fill="rgba(0, 0, 0, 0.08)"
+                      />
+                      {/* Bottom regular V (V shape) - starts from middle edges, goes to bottom center */}
+                      <Path
+                        d={`M 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH / 2} ${SCREEN_HEIGHT} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
+                        fill="rgba(0, 0, 0, 0.08)"
+                      />
+                    </Svg>
+
             <View style={styles.contentContainer}>
               <Text style={styles.loginText}>Create Account</Text>
               
               <Text style={styles.align_left}>Username</Text>
               <TextInput
-                style={styles.inputText}
+                style={[styles.inputText, { width: contentWidth }]}
                 onChangeText={setUsername}
                 value={username}
                 placeholder="Enter your username"
@@ -188,6 +217,7 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
               <TextInput
                 style={[
                   styles.inputText,
+                  { width: contentWidth },
                   !isValid && email.length > 0 ? styles.invalidInput : null,
                 ]}
                 onChangeText={setEmail}
@@ -204,7 +234,7 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
               
               <Text style={styles.align_left}>Password</Text>
               <TextInput
-                style={styles.inputText}
+                style={[styles.inputText, { width: contentWidth }]}
                 onChangeText={setPassword}
                 value={password}
                 placeholder="Enter your password"
@@ -221,7 +251,7 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
               
               <Text style={styles.align_left}>Confirm Password</Text>
               <TextInput
-               style={styles.inputText}
+               style={[styles.inputText, { width: contentWidth }]}
                 onChangeText={setConfirmPassword}
                 value={confirmPassword}
                 placeholder="Confirm your password"
@@ -236,7 +266,7 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
               />
               
               <TouchableOpacity
-                style={[styles.GoodButton, isLoading && styles.disabledButton]}
+                style={[styles.GoodButton, { width: contentWidth }, isLoading && styles.disabledButton]}
                 onPress={handleCreateAccount}
                 disabled={isLoading}>
                 {isLoading ? (
@@ -253,7 +283,7 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
                 <Text style={styles.backButtonText}>Back to Login</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </LinearGradient>
         </TouchableWithoutFeedback>
       </Animated.View>
     </SafeAreaView>
@@ -263,12 +293,17 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4c542',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  backgroundSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
   contentContainer: {
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   GoodButton: {
@@ -279,7 +314,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#020618ff',
     alignItems: 'center',
     marginTop: 20,
-    width: 400,
   },
   disabledButton: {
     opacity: 0.6,
@@ -317,7 +351,6 @@ const styles = StyleSheet.create({
   },
   inputText: {
     height: 40,
-    width: 400,
     borderColor: 'gray',
     borderWidth: 1,
     paddingHorizontal: 10,
