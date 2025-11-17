@@ -11,6 +11,8 @@ import {
   TouchableWithoutFeedback,
   Image,
   ActivityIndicator,
+  Platform,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,8 +26,8 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
   const [isLoading, setIsLoading] = useState(false);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isValid = emailRegex.test(email);
-  const shift = useRef(new Animated.Value(0)).current;
   const cursorOpacity = useRef(new Animated.Value(1)).current;
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -84,26 +86,39 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
     }
   }, [showCursor]);
 
-  useEffect(() => {
-    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', (e) => {
-      Animated.timing(shift, {
-        toValue: -e.endCoordinates.height / 2,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    });
-    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
-      Animated.timing(shift, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    });
-    return () => {
-      keyboardDidShow.remove();
-      keyboardDidHide.remove();
-    };
-  }, []);
+  // This adds the keyboard, relies on default driver to promote consistancy.
+    useEffect(() => {
+      const keyboardWillShow = Keyboard.addListener(
+        Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+        (e) => {
+          Animated.timing(keyboardHeight, {
+            toValue: e.endCoordinates.height,
+            duration: Platform.OS === 'ios' ? e.duration : 250,
+            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+            useNativeDriver: true,
+            isInteraction: false,
+          }).start();
+        }
+      );
+  
+      const keyboardWillHide = Keyboard.addListener(
+        Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+        (e) => {
+          Animated.timing(keyboardHeight, {
+            toValue: 0,
+            duration: Platform.OS === 'ios' ? e.duration : 250,
+            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+            useNativeDriver: true,
+            isInteraction: false,
+          }).start();
+        }
+      );
+  
+      return () => {
+        keyboardWillShow.remove();
+        keyboardWillHide.remove();
+      };
+    }, []);
 
   const handleLogin = async () => {
 
@@ -156,7 +171,11 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
               flex: 1,
               justifyContent: 'center',
               padding: 20,
-              transform: [{ translateY: shift }],
+              transform: [
+                { 
+                  translateY: Animated.multiply(keyboardHeight, -0.3)
+                }
+              ],
             }}
           >
             <Image 

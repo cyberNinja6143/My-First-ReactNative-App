@@ -5,11 +5,14 @@ import {
   View,
   Alert,
   TextInput,
-  Animated,
   Keyboard,
   TouchableOpacity,
   TouchableWithoutFeedback,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from '@env';
@@ -22,44 +25,58 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isValid = emailRegex.test(email);
-  const shift = useRef(new Animated.Value(0)).current;
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
 
+  // This adds the keyboard, relies on default driver to promote consistancy.
   useEffect(() => {
-    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', (e) => {
-      Animated.timing(shift, {
-        toValue: -e.endCoordinates.height / 2,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    });
-    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
-      Animated.timing(shift, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    });
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        Animated.timing(keyboardHeight, {
+          toValue: e.endCoordinates.height,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: true,
+          isInteraction: false,
+        }).start();
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => {
+        Animated.timing(keyboardHeight, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: true,
+          isInteraction: false,
+        }).start();
+      }
+    );
+
     return () => {
-      keyboardDidShow.remove();
-      keyboardDidHide.remove();
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
     };
   }, []);
 
+  // These are the notifications.
   const validateCreateAccount = () => {
     if (!username.trim()) {
       Alert.alert("Validation Error", "Please enter a username");
       return false;
     }
     if (!isValid) {
-      Alert.alert("Validation Error", "Please enter a valid email address");
+        Alert.alert("Validation Error", "Please enter a valid email address");
       return false;
     }
     if (password.length < 8) {
-      Alert.alert("Validation Error", "Password must be at least 8 characters");
+        Alert.alert("Validation Error", "Password must be at least 8 characters");
       return false;
     }
     if (password !== confirmPassword) {
-      Alert.alert("Validation Error", "Passwords do not match");
+        Alert.alert("Validation Error", "Passwords do not match");
       return false;
     }
     return true;
@@ -102,115 +119,144 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
                 onNavigateToLogin();
               }
             }
-          ]
+          ],
+          { cancelable: false }
         );
       } else if (response.status === 885 || responseText === '885') {
         Alert.alert(
           "Email in use.", 
-          "This email is already registered or a verification email has already been sent to this address. Please wait 10 minutes before trying again."
+          "This email is already registered or a verification email has already been sent to this address. Please wait 10 minutes before trying again.",
+          [{ text: "OK" }],
+          { cancelable: false }
         );
       } else if (response.status === 500 || responseText === '500') {
         Alert.alert(
           "Server Unavailable", 
-          "The server is temporarily down and will be back up as soon as possible. Please try again later."
+          "The server is temporarily down and will be back up as soon as possible. Please try again later.",
+          [{ text: "OK" }],
+          { cancelable: false }
         );
       } else {
-        Alert.alert("Error", "An unexpected error occurred. Please try again.");
+        Alert.alert(
+          "Error", 
+          "An unexpected error occurred. Please try again.",
+          [{ text: "OK" }],
+          { cancelable: false }
+        );
       }
     } catch (error) {
       console.error('Registration error:', error);
-      Alert.alert("Network Error", "Unable to connect to the server. Please check your internet connection and try again.");
+      Alert.alert(
+        "Network Error", 
+        "Unable to connect to the server. Please check your internet connection and try again.",
+        [{ text: "OK" }],
+        { cancelable: false }
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <Animated.View
-            style={{
-              flex: 1,
-              justifyContent: 'center',
-              padding: 20,
-              transform: [{ translateY: shift }],
-            }}
-          >
-            <Text style={styles.loginText}>Create Account</Text>
-            <Text style={styles.align_left}>Username</Text>
-            <TextInput
-              style={styles.inputText}
-              onChangeText={setUsername}
-              value={username}
-              placeholder="Enter your username"
-              placeholderTextColor="#aaaaaa"
-              autoCapitalize="none"
-              editable={!isLoading}
-            />
-            <Text style={styles.align_left}>Email</Text>
-            <TextInput
-              style={[
-                styles.inputText,
-                !isValid && email.length > 0 ? styles.invalidInput : null,
-              ]}
-              onChangeText={setEmail}
-              value={email}
-              placeholder="Enter your email address"
-              placeholderTextColor="#aaaaaa"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!isLoading}
-            />
-            <Text style={styles.align_left}>Password</Text>
-            <TextInput
-              style={[
-                styles.inputText,
-                password.length > 0 && password.length < 8 ? styles.invalidInput : null,
-              ]}
-              onChangeText={setPassword}
-              value={password}
-              placeholder="Enter your password"
-              placeholderTextColor="#aaaaaa"
-              autoCapitalize="none"
-              secureTextEntry={true}
-              editable={!isLoading}
-            />
-            <Text style={styles.align_left}>Confirm Password</Text>
-            <TextInput
-              style={[
-                styles.inputText,
-                confirmPassword.length > 0 && password !== confirmPassword ? styles.invalidInput : null,
-              ]}
-              onChangeText={setConfirmPassword}
-              value={confirmPassword}
-              placeholder="Confirm your password"
-              placeholderTextColor="#aaaaaa"
-              autoCapitalize="none"
-              secureTextEntry={true}
-              editable={!isLoading}
-            />
-            <TouchableOpacity
-              style={[styles.GoodButton, isLoading && styles.disabledButton]}
-              onPress={handleCreateAccount}
-              disabled={isLoading}>
-              {isLoading ? (
-                <ActivityIndicator color="#eceefaff" />
-              ) : (
-                <Text style={styles.buttonText}>Create Account</Text>
-              )}
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={onNavigateToLogin}
-              disabled={isLoading}>
-              <Text style={styles.backButtonText}>Back to Login</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </SafeAreaView>
-      </View>
-    </TouchableWithoutFeedback>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f4c542' }}>
+      <Animated.View
+        style={{
+          flex: 1,
+          transform: [{ translateY: Animated.multiply(keyboardHeight, -0.5) }],
+        }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.container}>
+            <View style={styles.contentContainer}>
+              <Text style={styles.loginText}>Create Account</Text>
+              
+              <Text style={styles.align_left}>Username</Text>
+              <TextInput
+                style={styles.inputText}
+                onChangeText={setUsername}
+                value={username}
+                placeholder="Enter your username"
+                placeholderTextColor="#aaaaaa"
+                autoCapitalize="none"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                keyboardAppearance="default"
+              />
+              
+              <Text style={styles.align_left}>Email</Text>
+              <TextInput
+                style={[
+                  styles.inputText,
+                  !isValid && email.length > 0 ? styles.invalidInput : null,
+                ]}
+                onChangeText={setEmail}
+                value={email}
+                placeholder="Enter your email address"
+                placeholderTextColor="#aaaaaa"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                keyboardAppearance="default"
+              />
+              
+              <Text style={styles.align_left}>Password</Text>
+              <TextInput
+                style={styles.inputText}
+                onChangeText={setPassword}
+                value={password}
+                placeholder="Enter your password"
+                placeholderTextColor="#aaaaaa"
+                autoCapitalize="none"
+                secureTextEntry={true}
+                textContentType="password"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                keyboardAppearance="default"
+                autoCorrect={false}
+              />
+              
+              <Text style={styles.align_left}>Confirm Password</Text>
+              <TextInput
+               style={styles.inputText}
+                onChangeText={setConfirmPassword}
+                value={confirmPassword}
+                placeholder="Confirm your password"
+                placeholderTextColor="#aaaaaa"
+                autoCapitalize="none"
+                secureTextEntry={true}
+                textContentType="newPassword"
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                keyboardAppearance="default"
+              />
+              
+              <TouchableOpacity
+                style={[styles.GoodButton, isLoading && styles.disabledButton]}
+                onPress={handleCreateAccount}
+                disabled={isLoading}>
+                {isLoading ? (
+                  <ActivityIndicator color="#eceefaff" />
+                ) : (
+                  <Text style={styles.buttonText}>Create Account</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={onNavigateToLogin}
+                disabled={isLoading}>
+                <Text style={styles.backButtonText}>Back to Login</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
@@ -220,6 +266,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4c542',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  contentContainer: {
+    justifyContent: 'center',
+    padding: 20,
   },
   GoodButton: {
     paddingHorizontal: 20,
