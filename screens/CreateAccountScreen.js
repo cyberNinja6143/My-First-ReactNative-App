@@ -9,16 +9,14 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Animated,
   Easing,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_URL } from '@env';
 import Svg, { Path } from 'react-native-svg';
+import { registerUser } from '../Routes';
 import { GlobalStyles, SCREEN_DIMENSIONS } from './GlobalStyles';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = SCREEN_DIMENSIONS;
@@ -36,7 +34,6 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
   // Calculate responsive dimensions
   const contentWidth = Math.min(SCREEN_WIDTH * 0.9, 400);
 
-  // This adds the keyboard, relies on default driver to promote consistancy.
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -70,22 +67,21 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
     };
   }, []);
 
-  // These are the notifications.
   const validateCreateAccount = () => {
     if (!username.trim()) {
       Alert.alert("Validation Error", "Please enter a username");
       return false;
     }
     if (!isValid) {
-        Alert.alert("Validation Error", "Please enter a valid email address");
+      Alert.alert("Validation Error", "Please enter a valid email address");
       return false;
     }
     if (password.length < 8) {
-        Alert.alert("Validation Error", "Password must be at least 8 characters");
+      Alert.alert("Validation Error", "Password must be at least 8 characters");
       return false;
     }
     if (password !== confirmPassword) {
-        Alert.alert("Validation Error", "Passwords do not match");
+      Alert.alert("Validation Error", "Passwords do not match");
       return false;
     }
     return true;
@@ -98,72 +94,61 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
 
     setIsLoading(true);
 
-    try {
-      const response = await fetch(`${API_URL}/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          Username: username,
-          Password: password,
-          Email: email,
-        }),
-      });
+    // Call the centralized register function
+    const result = await registerUser(username, email, password);
 
-      const responseText = await response.text();
-
-      if (response.status === 200) {
-        Alert.alert(
-          "Email Sent!", 
-          "Please verify your email before logging in.", 
-          [
-            {
-              text: "Okay", 
-              onPress: () => {
-                setUsername('');
-                setEmail('');
-                setPassword('');
-                setConfirmPassword('');
-                onNavigateToLogin();
-              }
+    if (result.success) {
+      Alert.alert(
+        "Email Sent!", 
+        result.message, 
+        [
+          {
+            text: "Okay", 
+            onPress: () => {
+              setUsername('');
+              setEmail('');
+              setPassword('');
+              setConfirmPassword('');
+              onNavigateToLogin();
             }
-          ],
-          { cancelable: false }
-        );
-      } else if (response.status === 885 || responseText === '885') {
+          }
+        ],
+        { cancelable: false }
+      );
+    } else {
+      // Show appropriate error message based on error code
+      if (result.errorCode === '885') {
         Alert.alert(
           "Email in use.", 
-          "This email is already registered or a verification email has already been sent to this address. Please wait 10 minutes before trying again.",
+          result.message,
           [{ text: "OK" }],
           { cancelable: false }
         );
-      } else if (response.status === 500 || responseText === '500') {
+      } else if (result.errorCode === '500') {
         Alert.alert(
           "Server Unavailable", 
-          "The server is temporarily down and will be back up as soon as possible. Please try again later.",
+          result.message,
+          [{ text: "OK" }],
+          { cancelable: false }
+        );
+      } else if (result.errorCode === 'network') {
+        Alert.alert(
+          "Network Error", 
+          result.message,
           [{ text: "OK" }],
           { cancelable: false }
         );
       } else {
         Alert.alert(
           "Error", 
-          "An unexpected error occurred. Please try again.",
+          result.message,
           [{ text: "OK" }],
           { cancelable: false }
         );
       }
-    } catch (error) {
-      console.error('Registration error:', error);
-      Alert.alert(
-        "Network Error", 
-        "Unable to connect to the server. Please check your internet connection and try again.",
-        [{ text: "OK" }],
-        { cancelable: false }
-      );
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -181,21 +166,21 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
           >
             {/* The diamond shape */}
             <Svg
-                      height={SCREEN_HEIGHT}
-                      width={SCREEN_WIDTH}
-                      style={GlobalStyles.backgroundSvg}
-                    >
-                      {/* Top inverted V (^ shape) - starts from top center, goes to middle edges */}
-                      <Path
-                        d={`M ${SCREEN_WIDTH / 2} 0 L 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
-                        fill="rgba(0, 0, 0, 0.08)"
-                      />
-                      {/* Bottom regular V (V shape) - starts from middle edges, goes to bottom center */}
-                      <Path
-                        d={`M 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH / 2} ${SCREEN_HEIGHT} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
-                        fill="rgba(0, 0, 0, 0.08)"
-                      />
-                    </Svg>
+              height={SCREEN_HEIGHT}
+              width={SCREEN_WIDTH}
+              style={GlobalStyles.backgroundSvg}
+            >
+              {/* Top inverted V (^ shape) - starts from top center, goes to middle edges */}
+              <Path
+                d={`M ${SCREEN_WIDTH / 2} 0 L 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
+                fill="rgba(0, 0, 0, 0.08)"
+              />
+              {/* Bottom regular V (V shape) - starts from middle edges, goes to bottom center */}
+              <Path
+                d={`M 0 ${SCREEN_HEIGHT / 2} L ${SCREEN_WIDTH / 2} ${SCREEN_HEIGHT} L ${SCREEN_WIDTH} ${SCREEN_HEIGHT / 2} Z`}
+                fill="rgba(0, 0, 0, 0.08)"
+              />
+            </Svg>
 
             <View style={styles.contentContainer}>
               <Text style={GlobalStyles.loginText}>Create Account</Text>
@@ -252,7 +237,7 @@ export default function CreateAccountScreen({ onNavigateToLogin }) {
               
               <Text style={GlobalStyles.align_left}>Confirm Password</Text>
               <TextInput
-               style={[GlobalStyles.inputText, { width: contentWidth }]}
+                style={[GlobalStyles.inputText, { width: contentWidth }]}
                 onChangeText={setConfirmPassword}
                 value={confirmPassword}
                 placeholder="Confirm your password"

@@ -13,13 +13,11 @@ import {
   ActivityIndicator,
   Platform,
   Easing,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { API_URL } from '@env';
+import { loginUser } from '../Routes';
 import { GlobalStyles, SCREEN_DIMENSIONS } from './GlobalStyles';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = SCREEN_DIMENSIONS;
@@ -96,80 +94,64 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
     }
   }, [showCursor]);
 
-  // This adds the keyboard, relies on default driver to promote consistancy.
-    useEffect(() => {
-      const keyboardWillShow = Keyboard.addListener(
-        Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-        (e) => {
-          Animated.timing(keyboardHeight, {
-            toValue: e.endCoordinates.height,
-            duration: Platform.OS === 'ios' ? e.duration : 250,
-            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-            useNativeDriver: true,
-            isInteraction: false,
-          }).start();
-        }
-      );
-  
-      const keyboardWillHide = Keyboard.addListener(
-        Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-        (e) => {
-          Animated.timing(keyboardHeight, {
-            toValue: 0,
-            duration: Platform.OS === 'ios' ? e.duration : 250,
-            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-            useNativeDriver: true,
-            isInteraction: false,
-          }).start();
-        }
-      );
-  
-      return () => {
-        keyboardWillShow.remove();
-        keyboardWillHide.remove();
-      };
-    }, []);
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        Animated.timing(keyboardHeight, {
+          toValue: e.endCoordinates.height,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: true,
+          isInteraction: false,
+        }).start();
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => {
+        Animated.timing(keyboardHeight, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: true,
+          isInteraction: false,
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   const handleLogin = async () => {
-
     setIsLoading(true);
 
-    try {
-      const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          Email: email,
-          Password: password,
-        }),
-      });
+    // Call the centralized login function
+    const result = await loginUser(email, password);
 
-      const responseText = await response.text();
-
-      if (response.status === 200) {
-        const data = JSON.parse(responseText);
-        const token = data.accessToken;
-        await AsyncStorage.setItem('jwt_token', token);
-        setEmail('');
-        setPassword('');
-        onLoginSuccess();
-      } else if (responseText === '588') {
-        Alert.alert("Login Failed", "Incorrect email or password");
-      } else if (responseText === '566') {
-        Alert.alert("Email Not Confirmed", "Please confirm your email before logging in");
-      } else if (responseText === '800') {
-        Alert.alert("Login Failed", "Incorrect email or password");
+    if (result.success) {
+      // Clear form and navigate
+      setEmail('');
+      setPassword('');
+      onLoginSuccess();
+    } else {
+      // Show appropriate error message
+      if (result.errorCode === '588' || result.errorCode === '800') {
+        Alert.alert("Login Failed", result.message);
+      } else if (result.errorCode === '566') {
+        Alert.alert("Email Not Confirmed", result.message);
+      } else if (result.errorCode === 'network') {
+        Alert.alert("Network Error", result.message);
       } else {
-        Alert.alert("Error", "An unexptectd error has occurred, please try again later");
+        Alert.alert("Error", result.message);
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert("Network Error", "Unable to connect to the server. Please check your internet connection and try again.");
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (

@@ -1,8 +1,6 @@
-// App.js
 import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '@env';
+import { refreshToken, getStoredToken, logoutUser } from './Routes';
 import LoginScreen from './screens/LoginScreen';
 import CreateAccountScreen from './screens/CreateAccountScreen';
 import LoggedInScreen from './screens/LoggedInScreen';
@@ -16,45 +14,32 @@ export default function App() {
 
   const checkAuthToken = async () => {
     try {
-      const token = await AsyncStorage.getItem('jwt_token');
+      // Get stored token
+      const token = await getStoredToken();
       
       if (!token) {
         setCurrentScreen('login');
         return;
       }
 
-      const response = await fetch(`${API_URL}/refreash`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      // Attempt to refresh token
+      const result = await refreshToken(token);
 
-      if (response.status === 200) {
-        const data = await response.json();
-        const newToken = data.accessToken;
-        
-        if (newToken && newToken.trim() !== '') {
-          await AsyncStorage.setItem('jwt_token', newToken);
-          setCurrentScreen('loggedIn');
-        } else {
-          await AsyncStorage.removeItem('jwt_token');
-          setCurrentScreen('login');
-        }
+      if (result.success) {
+        // Token refreshed successfully, navigate to logged in screen
+        setCurrentScreen('loggedIn');
       } else {
-        await AsyncStorage.removeItem('jwt_token');
+        // Token refresh failed, navigate to login
         setCurrentScreen('login');
       }
     } catch (error) {
       console.error('Auth check error:', error);
-      await AsyncStorage.removeItem('jwt_token');
       setCurrentScreen('login');
     }
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('jwt_token');
+    await logoutUser();
     setCurrentScreen('login');
   };
 
