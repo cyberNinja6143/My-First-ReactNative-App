@@ -43,8 +43,8 @@ export default function LoggedInScreen({ onLogout }) {
   };
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={{ flex: 1 }}>
         {/* Header with user avatar */}
         <View style={styles.header}>
           <View style={styles.headerLeft} />
@@ -165,8 +165,8 @@ export default function LoggedInScreen({ onLogout }) {
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
-      </SafeAreaView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
