@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Modal, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Modal, ActivityIndicator, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { retrieveUser, getStoredToken } from '../Routes'; // Update path
 import { Ionicons } from '@expo/vector-icons'; // or 'react-native-vector-icons/Ionicons'
@@ -43,7 +43,7 @@ export default function LoggedInScreen({ onLogout }) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? [] : ['top']}>
       <View style={{ flex: 1 }}>
         {/* Header with user avatar */}
         <View style={styles.header}>
@@ -174,6 +174,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f4c542',
+    paddingTop: Platform.OS === 'ios' ? 50 : 0, // Manual padding for iOS, SafeAreaView handles Android
   },
   header: {
     flexDirection: 'row',
