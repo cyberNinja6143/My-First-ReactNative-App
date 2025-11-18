@@ -17,8 +17,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { loginUser } from '../Routes';
-import { GlobalStyles, SCREEN_DIMENSIONS } from './GlobalStyles';
+import { loginUser } from '../../Routes';
+import { GlobalStyles, SCREEN_DIMENSIONS } from '../../sharedResources/sharedStyles/PreLoginStyles';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = SCREEN_DIMENSIONS;
 
@@ -193,7 +193,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToCreateAccount 
             }}
           >
             <Image 
-              source={require('../assets/app-pictures/assistant.png')}
+              source={require('../../assets/app-pictures/assistant.png')}
               style={[styles.assistantImage, { width: imageSize, height: imageSize }]}
               resizeMode="contain"
             />

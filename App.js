@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { refreshToken, getStoredToken, logoutUser } from './Routes';
-import LoginScreen from './screens/LoginScreen';
-import CreateAccountScreen from './screens/CreateAccountScreen';
-import LoggedInScreen from './screens/LoggedInScreen';
+import LoginScreen from './screens/PreLogin/LoginScreen';
+import CreateAccountScreen from './screens/PreLogin/CreateAccountScreen';
+import LoggedInScreen from './controllers/LoggedInScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('loading');
