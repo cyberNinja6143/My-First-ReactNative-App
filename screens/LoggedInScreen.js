@@ -10,14 +10,16 @@ import {
   Image,
   FlatList,
   Alert,
-  Dimensions
+  Dimensions,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { retrieveUser, getStoredToken, getPictures, uploadPicture, deletePicture } from '../Routes';
+import { retrieveUser, getStoredToken, getPictures, uploadPicture, deletePicture, getPicture } from '../Routes';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const TILE_SIZE = (width - 60) / 3; // 3 tiles per row with padding
 
 export default function LoggedInScreen({ onLogout }) {
@@ -28,6 +30,10 @@ export default function LoggedInScreen({ onLogout }) {
   const [pictures, setPictures] = useState([]);
   const [loadingPictures, setLoadingPictures] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [selectedPicture, setSelectedPicture] = useState(null);
+  const [showPictureModal, setShowPictureModal] = useState(false);
+  const [loadingFullImage, setLoadingFullImage] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadUserInfo();
@@ -78,6 +84,41 @@ export default function LoggedInScreen({ onLogout }) {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadPictures();
+    setRefreshing(false);
+  };
+
+  const handleViewPicture = async (pictureId) => {
+    setLoadingFullImage(true);
+    setShowPictureModal(true);
+    
+    try {
+      const token = await getStoredToken();
+      if (token) {
+        const result = await getPicture(token, pictureId);
+        if (result.success) {
+          setSelectedPicture(result.picture);
+        } else {
+          Alert.alert('Error', result.message || 'Failed to load picture');
+          setShowPictureModal(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading full picture:', error);
+      Alert.alert('Error', 'Failed to load picture');
+      setShowPictureModal(false);
+    } finally {
+      setLoadingFullImage(false);
+    }
+  };
+
+  const closePictureModal = () => {
+    setShowPictureModal(false);
+    setSelectedPicture(null);
+  };
+
   const requestPermissions = async () => {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -93,48 +134,47 @@ export default function LoggedInScreen({ onLogout }) {
   };
 
   const handleUploadPhoto = async () => {
-  const hasPermission = await requestPermissions();
-  if (!hasPermission) return;
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
 
-  try {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], // Changed from MediaTypeOptions.Images
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const selectedImage = result.assets[0];
-      
-      // Check file size (approximate, as we don't have exact size)
-      const imageFile = {
-        uri: selectedImage.uri,
-        name: selectedImage.fileName || `photo_${Date.now()}.jpg`,
-        type: selectedImage.type === 'image' ? 'image/jpeg' : selectedImage.mimeType || 'image/jpeg',
-      };
-
-      setUploadingPicture(true);
-
-      const token = await getStoredToken();
-      if (token) {
-        const uploadResult = await uploadPicture(token, imageFile, null);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
         
-        if (uploadResult.success) {
-          Alert.alert('Success', 'Photo uploaded successfully!');
-          loadPictures(); // Reload pictures
-        } else {
-          Alert.alert('Upload Failed', uploadResult.message || 'Failed to upload photo');
+        const imageFile = {
+          uri: selectedImage.uri,
+          name: selectedImage.fileName || `photo_${Date.now()}.jpg`,
+          type: selectedImage.type === 'image' ? 'image/jpeg' : selectedImage.mimeType || 'image/jpeg',
+        };
+
+        setUploadingPicture(true);
+
+        const token = await getStoredToken();
+        if (token) {
+          const uploadResult = await uploadPicture(token, imageFile, null);
+          
+          if (uploadResult.success) {
+            Alert.alert('Success', 'Photo uploaded successfully!');
+            loadPictures();
+          } else {
+            Alert.alert('Upload Failed', uploadResult.message || 'Failed to upload photo');
+          }
         }
       }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Error', 'An error occurred while uploading the photo');
+    } finally {
+      setUploadingPicture(false);
     }
-  } catch (error) {
-    console.error('Error uploading photo:', error);
-    Alert.alert('Error', 'An error occurred while uploading the photo');
-  } finally {
-    setUploadingPicture(false);
-  }
-};
+  };
 
   const handleDeletePhoto = (pictureId) => {
     Alert.alert(
@@ -155,6 +195,7 @@ export default function LoggedInScreen({ onLogout }) {
                 const result = await deletePicture(token, pictureId);
                 if (result.success) {
                   Alert.alert('Success', 'Photo deleted successfully');
+                  closePictureModal();
                   loadPictures();
                 } else {
                   Alert.alert('Error', result.message || 'Failed to delete photo');
@@ -182,7 +223,7 @@ export default function LoggedInScreen({ onLogout }) {
   const renderPictureItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.pictureItem}
-      onLongPress={() => handleDeletePhoto(item.pictureId)}
+      onPress={() => handleViewPicture(item.pictureId)}
     >
       <Image
         source={{ uri: `data:${item.contentType};base64,${item.thumbnail}` }}
@@ -194,63 +235,87 @@ export default function LoggedInScreen({ onLogout }) {
 
   const renderPlusButton = () => (
     <TouchableOpacity 
-      style={[styles.pictureItem, styles.plusButton]}
+      style={styles.plusButtonContainer}
       onPress={handleUploadPhoto}
       disabled={uploadingPicture}
+      activeOpacity={0.8}
     >
-      {uploadingPicture ? (
-        <ActivityIndicator size="large" color="#020618ff" />
-      ) : (
-        <Ionicons name="add" size={50} color="#020618ff" />
-      )}
+      <BlurView intensity={20} tint="light" style={styles.plusButtonBlur}>
+        <View style={styles.plusButtonContent}>
+          {uploadingPicture ? (
+            <ActivityIndicator size="large" color="#020618ff" />
+          ) : (
+            <>
+              <Ionicons name="add" size={40} color="#020618ff" />
+              <Text style={styles.plusButtonText}>Add Photo</Text>
+            </>
+          )}
+        </View>
+      </BlurView>
     </TouchableOpacity>
   );
 
   const renderPicturesTab = () => {
-    if (loadingPictures) {
-      return (
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color="#020618ff" />
-          <Text style={styles.loadingText}>Loading photos...</Text>
-        </View>
-      );
-    }
-
-    if (pictures.length === 0) {
-      return (
-        <View style={styles.centerContent}>
-          <Text style={styles.emptyText}>You have not uploaded any photos yet</Text>
-          <TouchableOpacity 
-            style={styles.emptyPlusButton}
-            onPress={handleUploadPhoto}
-            disabled={uploadingPicture}
-          >
-            {uploadingPicture ? (
-              <ActivityIndicator size="large" color="#f4c542" />
-            ) : (
-              <Ionicons name="add-circle" size={80} color="#020618ff" />
-            )}
-          </TouchableOpacity>
-          <Text style={styles.emptySubtext}>Tap the + to upload your first photo</Text>
-        </View>
-      );
-    }
-
+  if (loadingPictures && !refreshing) {
     return (
-      <FlatList
-        data={[...pictures, { isPlusButton: true }]}
-        renderItem={({ item }) => 
-          item.isPlusButton ? renderPlusButton() : renderPictureItem({ item })
-        }
-        keyExtractor={(item, index) => 
-          item.isPlusButton ? 'plus-button' : item.pictureId
-        }
-        numColumns={3}
-        contentContainerStyle={styles.picturesGrid}
-        columnWrapperStyle={styles.picturesRow}
-      />
+      <View style={styles.centerContent}>
+        <ActivityIndicator size="large" color="#020618ff" />
+        <Text style={styles.loadingText}>Loading photos...</Text>
+      </View>
     );
-  };
+  }
+
+  if (pictures.length === 0 && !refreshing) {
+    return (
+      <View style={styles.centerContent}>
+        <Text style={styles.emptyText}>You have not uploaded any photos yet</Text>
+        <TouchableOpacity 
+          style={styles.emptyPlusButton}
+          onPress={handleUploadPhoto}
+          disabled={uploadingPicture}
+        >
+          {uploadingPicture ? (
+            <ActivityIndicator size="large" color="#f4c542" />
+          ) : (
+            <Ionicons name="add-circle" size={80} color="#020618ff" />
+          )}
+        </TouchableOpacity>
+        <Text style={styles.emptySubtext}>Tap the + to upload your first photo</Text>
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={[...pictures, { isPlusButton: true }]}
+      renderItem={({ item }) => 
+        item.isPlusButton ? renderPlusButton() : renderPictureItem({ item })
+      }
+      keyExtractor={(item, index) => 
+        item.isPlusButton ? 'plus-button' : item.pictureId
+      }
+      numColumns={3}
+      contentContainerStyle={[
+        styles.picturesGrid,
+        { flexGrow: 1 } // This ensures content can grow and be pulled
+      ]}
+      columnWrapperStyle={styles.picturesRow}
+      bounces={true}
+      alwaysBounceVertical={true}
+      scrollEnabled={true}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#020618ff"
+          colors={['#020618ff']}
+          progressViewOffset={Platform.OS === 'ios' ? 0 : 0}
+        />
+      }
+    />
+  );
+};
 
   const renderContent = () => {
     switch (activeTab) {
@@ -276,7 +341,7 @@ export default function LoggedInScreen({ onLogout }) {
         <View style={styles.header}>
           <View style={styles.headerLeft} />
           <Text style={styles.headerTitle}>
-            {activeTab === 'pictures' ? 'Photos' : 'Home'}
+            {activeTab === 'pictures' ? 'My Photos' : 'Home'}
           </Text>
           <TouchableOpacity 
             style={styles.avatarButton}
@@ -391,6 +456,65 @@ export default function LoggedInScreen({ onLogout }) {
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
+
+        {/* Full Picture Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={showPictureModal}
+          onRequestClose={closePictureModal}
+        >
+          <View style={styles.pictureModalOverlay}>
+            <TouchableOpacity 
+              style={styles.pictureModalBackground}
+              activeOpacity={1}
+              onPress={closePictureModal}
+            >
+              <View style={styles.pictureModalContent}>
+                {loadingFullImage ? (
+                  <View style={styles.pictureLoadingContainer}>
+                    <ActivityIndicator size="large" color="#f4c542" />
+                    <Text style={styles.pictureLoadingText}>Loading image...</Text>
+                  </View>
+                ) : selectedPicture ? (
+                  <>
+                    <View style={styles.pictureModalHeader}>
+                      <View style={styles.pictureModalHeaderLeft}>
+                        <Text style={styles.pictureModalFileName} numberOfLines={1}>
+                          {selectedPicture.fileName}
+                        </Text>
+                        <Text style={styles.pictureModalFileInfo}>
+                          {selectedPicture.width} × {selectedPicture.height} • {(selectedPicture.fileSize / 1024).toFixed(0)} KB
+                        </Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.pictureModalDeleteButton}
+                        onPress={() => handleDeletePhoto(selectedPicture.pictureId)}
+                      >
+                        <Ionicons name="trash-outline" size={24} color="#ff4444" />
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <View style={styles.pictureImageContainer}>
+                      <Image
+                        source={{ uri: `data:${selectedPicture.contentType};base64,${selectedPicture.imageData}` }}
+                        style={styles.fullPictureImage}
+                        resizeMode="contain"
+                      />
+                    </View>
+
+                    <TouchableOpacity 
+                      style={styles.pictureModalCloseButton}
+                      onPress={closePictureModal}
+                    >
+                      <Ionicons name="close-circle" size={40} color="#eceefaff" />
+                    </TouchableOpacity>
+                  </>
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -465,12 +589,31 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  plusButton: {
+  plusButtonContainer: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    marginHorizontal: 5,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  plusButtonBlur: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(2, 6, 24, 0.2)',
+    overflow: 'hidden',
+  },
+  plusButtonContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#020618ff',
-    borderStyle: 'dashed',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  plusButtonText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#020618ff',
   },
   emptyText: {
     fontSize: 18,
@@ -578,5 +721,66 @@ const styles = StyleSheet.create({
     color: '#eceefaff',
     fontWeight: 'bold',
     fontSize: 18,
+  },
+  // Full Picture Modal Styles
+  pictureModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  pictureModalBackground: {
+    flex: 1,
+  },
+  pictureModalContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  pictureModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 15,
+  },
+  pictureModalHeaderLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  pictureModalFileName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#eceefaff',
+    marginBottom: 4,
+  },
+  pictureModalFileInfo: {
+    fontSize: 12,
+    color: '#999',
+  },
+  pictureModalDeleteButton: {
+    padding: 10,
+  },
+  pictureImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullPictureImage: {
+    width: width,
+    height: height * 0.7,
+  },
+  pictureLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pictureLoadingText: {
+    fontSize: 16,
+    color: '#eceefaff',
+    marginTop: 15,
+  },
+  pictureModalCloseButton: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 50 : 30,
+    alignSelf: 'center',
   },
 });
