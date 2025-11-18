@@ -497,3 +497,275 @@ export const deletePicture = async (token, pictureId) => {
     };
   }
 };
+
+/**
+ * Add comment route - Adds a comment to a picture
+ * @param {string} token - Current JWT token
+ * @param {string} pictureId - Picture ID (GUID)
+ * @param {string} commentText - Comment text content
+ * @returns {Object} { success: boolean, comment?: Object, errorCode?: string, message?: string }
+ */
+export const addComment = async (token, pictureId, commentText) => {
+  try {
+    const response = await fetch(`${API_URL}/addcomment`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        PictureId: pictureId,
+        CommentText: commentText,
+      }),
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        comment: {
+          commentId: data.commentId,
+          pictureId: data.pictureId,
+          userUUID: data.userUUID,
+          comment: data.comment,
+          createdAt: data.createdAt,
+        },
+        message: data.message,
+      };
+    } else if (response.status === 409) {
+      const responseText = await response.text();
+      if (responseText === '588') {
+        return {
+          success: false,
+          errorCode: '588',
+          message: 'User not found',
+        };
+      }
+    } else if (response.status === 404) {
+      const responseText = await response.text();
+      if (responseText === '903') {
+        return {
+          success: false,
+          errorCode: '903',
+          message: 'Picture not found',
+        };
+      }
+    } else if (response.status === 400) {
+      const responseText = await response.text();
+      if (responseText === '904') {
+        return {
+          success: false,
+          errorCode: '904',
+          message: 'Comment text cannot be empty',
+        };
+      }
+    }
+    
+    return {
+      success: false,
+      errorCode: 'unknown',
+      message: 'Failed to add comment',
+    };
+  } catch (error) {
+    console.error('Add comment error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
+ * Remove comment route - Removes a comment by ID
+ * @param {string} token - Current JWT token
+ * @param {string} commentId - Comment ID (GUID)
+ * @returns {Object} { success: boolean, commentId?: string, errorCode?: string, message?: string }
+ */
+export const removeComment = async (token, commentId) => {
+  try {
+    const response = await fetch(`${API_URL}/removecomment/${commentId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        commentId: data.commentId,
+        message: data.message,
+      };
+    } else if (response.status === 409) {
+      const responseText = await response.text();
+      if (responseText === '588') {
+        return {
+          success: false,
+          errorCode: '588',
+          message: 'User not found',
+        };
+      }
+    } else if (response.status === 404) {
+      const responseText = await response.text();
+      if (responseText === '905') {
+        return {
+          success: false,
+          errorCode: '905',
+          message: 'Comment not found',
+        };
+      }
+    } else if (response.status === 403) {
+      return {
+        success: false,
+        errorCode: '403',
+        message: 'You do not have permission to delete this comment',
+      };
+    }
+    
+    return {
+      success: false,
+      errorCode: 'unknown',
+      message: 'Failed to remove comment',
+    };
+  } catch (error) {
+    console.error('Remove comment error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
+ * Get comments route - Retrieves all comments for a specific picture
+ * @param {string} pictureId - Picture ID (GUID)
+ * @returns {Object} { success: boolean, comments?: Array, errorCode?: string, message?: string }
+ */
+export const getComments = async (pictureId) => {
+  try {
+    const response = await fetch(`${API_URL}/getcomments/${pictureId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        comments: data,
+      };
+    } else if (response.status === 404) {
+      const responseText = await response.text();
+      if (responseText === '903') {
+        return {
+          success: false,
+          errorCode: '903',
+          message: 'Picture not found',
+        };
+      }
+    }
+    
+    return {
+      success: false,
+      errorCode: 'unknown',
+      message: 'Failed to retrieve comments',
+    };
+  } catch (error) {
+    console.error('Get comments error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
+ * Update comment route - Updates a comment's text
+ * @param {string} token - Current JWT token
+ * @param {string} commentId - Comment ID (GUID)
+ * @param {string} commentText - New comment text content
+ * @returns {Object} { success: boolean, comment?: Object, errorCode?: string, message?: string }
+ */
+export const updateComment = async (token, commentId, commentText) => {
+  try {
+    const response = await fetch(`${API_URL}/updatecomment/${commentId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        CommentText: commentText,
+      }),
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        comment: {
+          commentId: data.commentId,
+          comment: data.comment,
+        },
+        message: data.message,
+      };
+    } else if (response.status === 409) {
+      const responseText = await response.text();
+      if (responseText === '588') {
+        return {
+          success: false,
+          errorCode: '588',
+          message: 'User not found',
+        };
+      }
+    } else if (response.status === 404) {
+      const responseText = await response.text();
+      if (responseText === '905') {
+        return {
+          success: false,
+          errorCode: '905',
+          message: 'Comment not found',
+        };
+      }
+    } else if (response.status === 400) {
+      const responseText = await response.text();
+      if (responseText === '904') {
+        return {
+          success: false,
+          errorCode: '904',
+          message: 'Comment text cannot be empty',
+        };
+      }
+    } else if (response.status === 403) {
+      return {
+        success: false,
+        errorCode: '403',
+        message: 'You do not have permission to update this comment',
+      };
+    }
+    
+    return {
+      success: false,
+      errorCode: 'unknown',
+      message: 'Failed to update comment',
+    };
+  } catch (error) {
+    console.error('Update comment error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
