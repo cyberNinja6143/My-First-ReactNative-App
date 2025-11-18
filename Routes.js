@@ -193,7 +193,9 @@ export const logoutUser = async () => {
   }
 };
 
-/**
+/**\
+ * This is not a route to the backend, it pulls from local storage.
+ * This will be moved to a different class later to comply with SOLID design principles.
  * Get stored JWT token
  * @returns {Promise<string|null>} The stored JWT token or null if not found
  */
@@ -204,5 +206,51 @@ export const getStoredToken = async () => {
   } catch (error) {
     console.error('Error getting stored token:', error);
     return null;
+  }
+};
+
+/**
+ * Retrieve user route - Gets current user's username and UUID
+ * @param {string} token - Current JWT token
+ * @returns {Object} { success: boolean, username?: string, uuid?: string, message?: string }
+ */
+export const retrieveUser = async (token) => {
+  try {
+    const response = await fetch(`${API_URL}/retrieveuser`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        username: data.username,
+        uuid: data.uuid,
+      };
+    } else if (response.status === 409) {
+      return {
+        success: false,
+        errorCode: '588',
+        message: 'User not found',
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: 'unknown',
+        message: 'Failed to retrieve user information',
+      };
+    }
+  } catch (error) {
+    console.error('Retrieve user error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
   }
 };
