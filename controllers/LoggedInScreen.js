@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -6,7 +6,8 @@ import {
   TouchableOpacity, 
   Modal, 
   ActivityIndicator, 
-  Platform
+  Platform,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { retrieveUser, getStoredToken } from '../Routes';
@@ -20,10 +21,49 @@ export default function LoggedInScreen({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [showUserModal, setShowUserModal] = useState(false);
   const [activeTab, setActiveTab] = useState('pictures');
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadUserInfo();
   }, []);
+
+  // Animate when tab changes
+  useEffect(() => {
+    animateTabChange();
+  }, [activeTab]);
+
+  const animateTabChange = () => {
+    // Fade out and slide
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: -20,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Fade in and slide back
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
 
   const loadUserInfo = async () => {
     try {
@@ -95,10 +135,18 @@ export default function LoggedInScreen({ onLogout }) {
           </TouchableOpacity>
         </View>
 
-        {/* Main content area */}
-        <View style={styles.content}>
+        {/* Main content area with animation */}
+        <Animated.View 
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
           {renderContent()}
-        </View>
+        </Animated.View>
 
         {/* Bottom Navigation Bar */}
         <View style={styles.navbar}>
