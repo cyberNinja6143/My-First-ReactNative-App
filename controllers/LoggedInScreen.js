@@ -14,8 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import MyPhotosScreen from '../screens/PostLogin/MyPhotosScreen';
 import ExploreScreen from '../screens/PostLogin/ExploreScreen';
-import Tab3Screen from '../screens/PostLogin/Tab3Screen';
-import Tab4Screen from '../screens/PostLogin/Tab4Screen';
 
 export default function LoggedInScreen({ onLogout }) {
   const [userInfo, setUserInfo] = useState(null);
@@ -62,10 +60,6 @@ export default function LoggedInScreen({ onLogout }) {
         return 'My Photos';
       case 'explore':
         return 'Explore';
-      case 'tab3':
-        return 'Tab 3';
-      case 'tab4':
-        return 'Tab 4';
       default:
         return 'Home';
     }
@@ -77,10 +71,6 @@ export default function LoggedInScreen({ onLogout }) {
         return <MyPhotosScreen userInfo={userInfo} />;
       case 'explore':
         return <ExploreScreen userInfo={userInfo} />;
-      case 'tab3':
-        return <Tab3Screen userInfo={userInfo} />;
-      case 'tab4':
-        return <Tab4Screen userInfo={userInfo} />;
       default:
         return null;
     }
@@ -118,7 +108,7 @@ export default function LoggedInScreen({ onLogout }) {
           >
             <Ionicons 
               name="images-outline" 
-              size={28} 
+              size={36} 
               color={activeTab === 'pictures' ? '#f4c542' : '#666'} 
             />
             <Text style={[styles.navText, activeTab === 'pictures' && styles.navTextActive]}>
@@ -126,45 +116,19 @@ export default function LoggedInScreen({ onLogout }) {
             </Text>
           </TouchableOpacity>
 
+          <View style={styles.navDivider} />
+
           <TouchableOpacity 
             style={[styles.navButton, activeTab === 'explore' && styles.navButtonActive]}
             onPress={() => setActiveTab('explore')}
           >
             <Ionicons 
               name="people-outline" 
-              size={28} 
+              size={36} 
               color={activeTab === 'explore' ? '#f4c542' : '#666'} 
             />
             <Text style={[styles.navText, activeTab === 'explore' && styles.navTextActive]}>
               Explore
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.navButton, activeTab === 'tab3' && styles.navButtonActive]}
-            onPress={() => setActiveTab('tab3')}
-          >
-            <Ionicons 
-              name="ellipse-outline" 
-              size={28} 
-              color={activeTab === 'tab3' ? '#f4c542' : '#666'} 
-            />
-            <Text style={[styles.navText, activeTab === 'tab3' && styles.navTextActive]}>
-              Tab 3
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.navButton, activeTab === 'tab4' && styles.navButtonActive]}
-            onPress={() => setActiveTab('tab4')}
-          >
-            <Ionicons 
-              name="ellipse-outline" 
-              size={28} 
-              color={activeTab === 'tab4' ? '#f4c542' : '#666'} 
-            />
-            <Text style={[styles.navText, activeTab === 'tab4' && styles.navTextActive]}>
-              Tab 4
             </Text>
           </TouchableOpacity>
         </View>
@@ -253,14 +217,14 @@ const styles = StyleSheet.create({
   navbar: {
     flexDirection: 'row',
     backgroundColor: '#020618ff',
-    paddingVertical: 10,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    paddingVertical: 12,
+    marginHorizontal: 40,
+    marginBottom: 20,
+    borderRadius: 50,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: -2,
+      height: 2,
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -273,6 +237,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   navButtonActive: {},
+  navDivider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: '#f4c542',
+    opacity: 0.3,
+    alignSelf: 'center',
+  },
   navText: {
     fontSize: 12,
     color: '#666',

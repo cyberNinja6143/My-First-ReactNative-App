@@ -133,7 +133,10 @@ export default function ExploreScreen({ userInfo }) {
         renderItem={renderPictureItem}
         keyExtractor={(item) => item.pictureId}
         numColumns={3}
-        contentContainerStyle={styles.picturesGrid}
+        contentContainerStyle={[
+          styles.picturesGrid,
+          { flexGrow: 1 }
+        ]}
         columnWrapperStyle={styles.picturesRow}
         bounces={true}
         alwaysBounceVertical={true}
