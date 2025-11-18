@@ -12,7 +12,7 @@ import {
   Dimensions,
   RefreshControl
 } from 'react-native';
-import { getStoredToken, getAllPictures } from '../../Routes';
+import { getStoredToken, getAllPictures, getPicture } from '../../Routes';
 import { Ionicons } from '@expo/vector-icons';
 import PictureModal from '../../sharedResources/sharedComponents/PictureModal';
 
@@ -67,9 +67,18 @@ export default function ExploreScreen({ userInfo }) {
     setShowPictureModal(true);
     
     try {
-      const picture = allPictures.find(p => p.pictureId === pictureId);
-      if (picture) {
-        setSelectedPicture({ ...picture, isExplore: true });
+      const token = await getStoredToken();
+      if (token) {
+        const result = await getPicture(token, pictureId);
+        if (result.success) {
+          setSelectedPicture({ ...result.picture, isExplore: true });
+        } else {
+          Alert.alert('Error', result.message || 'Failed to load picture');
+          setShowPictureModal(false);
+        }
+      } else {
+        Alert.alert('Error', 'No authentication token found');
+        setShowPictureModal(false);
       }
     } catch (error) {
       console.error('Error loading full picture:', error);

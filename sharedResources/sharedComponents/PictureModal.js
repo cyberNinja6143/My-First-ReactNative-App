@@ -192,7 +192,7 @@ export default function PictureModal({
                       {isExplore ? (
                         <>
                           <Text style={styles.pictureModalFileName} numberOfLines={1}>
-                            Posted by User {picture.userUUID.substring(0, 8)}
+                            Posted by {picture.author}
                           </Text>
                           <Text style={styles.pictureModalFileInfo}>
                             {formatDate(picture.uploadedAt)}
@@ -228,9 +228,7 @@ export default function PictureModal({
                     <View style={styles.pictureImageContainer}>
                       <Image
                         source={{ 
-                          uri: isExplore 
-                            ? `data:${picture.contentType};base64,${picture.thumbnail}`
-                            : `data:${picture.contentType};base64,${picture.imageData}` 
+                          uri: `data:${picture.contentType};base64,${picture.imageData}`
                         }}
                         style={styles.fullPictureImage}
                         resizeMode="contain"
