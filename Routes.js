@@ -499,6 +499,58 @@ export const deletePicture = async (token, pictureId) => {
 };
 
 /**
+ * Get all pictures route - Retrieves all pictures from all users (requires authentication)
+ * @param {string} token - Current JWT token
+ * @returns {Object} { success: boolean, pictures?: Array, errorCode?: string, message?: string }
+ */
+export const getAllPictures = async (token) => {
+  try {
+    const response = await fetch(`${API_URL}/getallpictures`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        pictures: data,
+      };
+    } else if (response.status === 401) {
+      return {
+        success: false,
+        errorCode: '401',
+        message: 'Unauthorized - please log in again',
+      };
+    } else if (response.status === 400) {
+      const responseText = await response.text();
+      return {
+        success: false,
+        errorCode: '883',
+        message: 'Bad request',
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: 'unknown',
+        message: `Failed to retrieve pictures (status: ${response.status})`,
+      };
+    }
+  } catch (error) {
+    console.error('Get all pictures error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
  * Add comment route - Adds a comment to a picture
  * @param {string} token - Current JWT token
  * @param {string} pictureId - Picture ID (GUID)
