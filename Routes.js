@@ -193,7 +193,7 @@ export const logoutUser = async () => {
   }
 };
 
-/**\
+/**
  * This is not a route to the backend, it pulls from local storage.
  * This will be moved to a different class later to comply with SOLID design principles.
  * Get stored JWT token
@@ -212,7 +212,7 @@ export const getStoredToken = async () => {
 /**
  * Retrieve user route - Gets current user's username and UUID
  * @param {string} token - Current JWT token
- * @returns {Object} { success: boolean, username?: string, uuid?: string, message?: string }
+ * @returns {Object} { success: boolean, username?: string, uuid?: string, email?: string, message?: string }
  */
 export const retrieveUser = async (token) => {
   try {
@@ -231,6 +231,7 @@ export const retrieveUser = async (token) => {
         success: true,
         username: data.username,
         uuid: data.uuid,
+        email: data.email,
       };
     } else if (response.status === 409) {
       return {
@@ -247,6 +248,248 @@ export const retrieveUser = async (token) => {
     }
   } catch (error) {
     console.error('Retrieve user error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
+ * Upload picture route - Uploads an image with optional description
+ * @param {string} token - Current JWT token
+ * @param {Object} imageFile - Image file object with uri, name, and type
+ * @param {string} description - Optional description for the image
+ * @returns {Object} { success: boolean, pictureId?: string, fileName?: string, errorCode?: string, message?: string }
+ */
+export const uploadPicture = async (token, imageFile, description = null) => {
+  try {
+    const formData = new FormData();
+    formData.append('image', {
+      uri: imageFile.uri,
+      name: imageFile.name || 'photo.jpg',
+      type: imageFile.type || 'image/jpeg',
+    });
+    
+    if (description) {
+      formData.append('description', description);
+    }
+
+    const response = await fetch(`${API_URL}/uploadpicture`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+      body: formData,
+    });
+
+    const responseText = await response.text();
+
+    if (response.status === 200) {
+      const data = JSON.parse(responseText);
+      return {
+        success: true,
+        pictureId: data.pictureId,
+        fileName: data.fileName,
+        message: data.message,
+      };
+    } else if (responseText === '588') {
+      return {
+        success: false,
+        errorCode: '588',
+        message: 'User not found',
+      };
+    } else if (responseText === '900') {
+      return {
+        success: false,
+        errorCode: '900',
+        message: 'No image file provided',
+      };
+    } else if (responseText === '901') {
+      return {
+        success: false,
+        errorCode: '901',
+        message: 'Image file is too large (max 10MB)',
+      };
+    } else if (responseText === '902') {
+      return {
+        success: false,
+        errorCode: '902',
+        message: 'Invalid image file type. Please upload JPEG, PNG, GIF, or WebP',
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: 'unknown',
+        message: 'Failed to upload picture',
+      };
+    }
+  } catch (error) {
+    console.error('Upload picture error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
+ * Get pictures route - Retrieves all pictures for the authenticated user
+ * @param {string} token - Current JWT token
+ * @returns {Object} { success: boolean, pictures?: Array, errorCode?: string, message?: string }
+ */
+export const getPictures = async (token) => {
+  try {
+    const response = await fetch(`${API_URL}/getpictures`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        pictures: data,
+      };
+    } else if (response.status === 409) {
+      return {
+        success: false,
+        errorCode: '588',
+        message: 'User not found',
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: 'unknown',
+        message: 'Failed to retrieve pictures',
+      };
+    }
+  } catch (error) {
+    console.error('Get pictures error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
+ * Get picture route - Retrieves a specific picture by ID
+ * @param {string} token - Current JWT token
+ * @param {string} pictureId - Picture ID (GUID)
+ * @returns {Object} { success: boolean, picture?: Object, errorCode?: string, message?: string }
+ */
+export const getPicture = async (token, pictureId) => {
+  try {
+    const response = await fetch(`${API_URL}/getpicture/${pictureId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        picture: data,
+      };
+    } else if (response.status === 409) {
+      return {
+        success: false,
+        errorCode: '588',
+        message: 'User not found',
+      };
+    } else if (response.status === 404) {
+      return {
+        success: false,
+        errorCode: '903',
+        message: 'Picture not found',
+      };
+    } else if (response.status === 403) {
+      return {
+        success: false,
+        errorCode: '403',
+        message: 'You do not have permission to view this picture',
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: 'unknown',
+        message: 'Failed to retrieve picture',
+      };
+    }
+  } catch (error) {
+    console.error('Get picture error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
+
+/**
+ * Delete picture route - Deletes a specific picture by ID
+ * @param {string} token - Current JWT token
+ * @param {string} pictureId - Picture ID (GUID)
+ * @returns {Object} { success: boolean, pictureId?: string, errorCode?: string, message?: string }
+ */
+export const deletePicture = async (token, pictureId) => {
+  try {
+    const response = await fetch(`${API_URL}/deletepicture/${pictureId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status === 200) {
+      const data = await response.json();
+      
+      return {
+        success: true,
+        pictureId: data.pictureId,
+        message: data.message,
+      };
+    } else if (response.status === 409) {
+      return {
+        success: false,
+        errorCode: '588',
+        message: 'User not found',
+      };
+    } else if (response.status === 404) {
+      return {
+        success: false,
+        errorCode: '903',
+        message: 'Picture not found',
+      };
+    } else if (response.status === 403) {
+      return {
+        success: false,
+        errorCode: '403',
+        message: 'You do not have permission to delete this picture',
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: 'unknown',
+        message: 'Failed to delete picture',
+      };
+    }
+  } catch (error) {
+    console.error('Delete picture error:', error);
     return {
       success: false,
       errorCode: 'network',

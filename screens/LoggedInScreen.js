@@ -1,18 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Modal, ActivityIndicator, Platform, StatusBar } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  Modal, 
+  ActivityIndicator, 
+  Platform, 
+  Image,
+  FlatList,
+  Alert,
+  Dimensions
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { retrieveUser, getStoredToken } from '../Routes'; // Update path
-import { Ionicons } from '@expo/vector-icons'; // or 'react-native-vector-icons/Ionicons'
+import { retrieveUser, getStoredToken, getPictures, uploadPicture, deletePicture } from '../Routes';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+
+const { width } = Dimensions.get('window');
+const TILE_SIZE = (width - 60) / 3; // 3 tiles per row with padding
 
 export default function LoggedInScreen({ onLogout }) {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUserModal, setShowUserModal] = useState(false);
   const [activeTab, setActiveTab] = useState('pictures');
+  const [pictures, setPictures] = useState([]);
+  const [loadingPictures, setLoadingPictures] = useState(false);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
 
   useEffect(() => {
     loadUserInfo();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'pictures') {
+      loadPictures();
+    }
+  }, [activeTab]);
 
   const loadUserInfo = async () => {
     try {
@@ -33,6 +58,118 @@ export default function LoggedInScreen({ onLogout }) {
     }
   };
 
+  const loadPictures = async () => {
+    setLoadingPictures(true);
+    try {
+      const token = await getStoredToken();
+      if (token) {
+        const result = await getPictures(token);
+        if (result.success) {
+          setPictures(result.pictures);
+        } else {
+          Alert.alert('Error', result.message || 'Failed to load pictures');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading pictures:', error);
+      Alert.alert('Error', 'Failed to load pictures');
+    } finally {
+      setLoadingPictures(false);
+    }
+  };
+
+  const requestPermissions = async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Sorry, we need camera roll permissions to upload photos.'
+        );
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleUploadPhoto = async () => {
+  const hasPermission = await requestPermissions();
+  if (!hasPermission) return;
+
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], // Changed from MediaTypeOptions.Images
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const selectedImage = result.assets[0];
+      
+      // Check file size (approximate, as we don't have exact size)
+      const imageFile = {
+        uri: selectedImage.uri,
+        name: selectedImage.fileName || `photo_${Date.now()}.jpg`,
+        type: selectedImage.type === 'image' ? 'image/jpeg' : selectedImage.mimeType || 'image/jpeg',
+      };
+
+      setUploadingPicture(true);
+
+      const token = await getStoredToken();
+      if (token) {
+        const uploadResult = await uploadPicture(token, imageFile, null);
+        
+        if (uploadResult.success) {
+          Alert.alert('Success', 'Photo uploaded successfully!');
+          loadPictures(); // Reload pictures
+        } else {
+          Alert.alert('Upload Failed', uploadResult.message || 'Failed to upload photo');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    Alert.alert('Error', 'An error occurred while uploading the photo');
+  } finally {
+    setUploadingPicture(false);
+  }
+};
+
+  const handleDeletePhoto = (pictureId) => {
+    Alert.alert(
+      'Delete Photo',
+      'Are you sure you want to delete this photo?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await getStoredToken();
+              if (token) {
+                const result = await deletePicture(token, pictureId);
+                if (result.success) {
+                  Alert.alert('Success', 'Photo deleted successfully');
+                  loadPictures();
+                } else {
+                  Alert.alert('Error', result.message || 'Failed to delete photo');
+                }
+              }
+            } catch (error) {
+              console.error('Error deleting photo:', error);
+              Alert.alert('Error', 'An error occurred while deleting the photo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getInitial = () => {
     return userInfo?.username?.charAt(0).toUpperCase() || '?';
   };
@@ -42,13 +179,105 @@ export default function LoggedInScreen({ onLogout }) {
     onLogout();
   };
 
+  const renderPictureItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.pictureItem}
+      onLongPress={() => handleDeletePhoto(item.pictureId)}
+    >
+      <Image
+        source={{ uri: `data:${item.contentType};base64,${item.thumbnail}` }}
+        style={styles.pictureImage}
+        resizeMode="cover"
+      />
+    </TouchableOpacity>
+  );
+
+  const renderPlusButton = () => (
+    <TouchableOpacity 
+      style={[styles.pictureItem, styles.plusButton]}
+      onPress={handleUploadPhoto}
+      disabled={uploadingPicture}
+    >
+      {uploadingPicture ? (
+        <ActivityIndicator size="large" color="#020618ff" />
+      ) : (
+        <Ionicons name="add" size={50} color="#020618ff" />
+      )}
+    </TouchableOpacity>
+  );
+
+  const renderPicturesTab = () => {
+    if (loadingPictures) {
+      return (
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#020618ff" />
+          <Text style={styles.loadingText}>Loading photos...</Text>
+        </View>
+      );
+    }
+
+    if (pictures.length === 0) {
+      return (
+        <View style={styles.centerContent}>
+          <Text style={styles.emptyText}>You have not uploaded any photos yet</Text>
+          <TouchableOpacity 
+            style={styles.emptyPlusButton}
+            onPress={handleUploadPhoto}
+            disabled={uploadingPicture}
+          >
+            {uploadingPicture ? (
+              <ActivityIndicator size="large" color="#f4c542" />
+            ) : (
+              <Ionicons name="add-circle" size={80} color="#020618ff" />
+            )}
+          </TouchableOpacity>
+          <Text style={styles.emptySubtext}>Tap the + to upload your first photo</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={[...pictures, { isPlusButton: true }]}
+        renderItem={({ item }) => 
+          item.isPlusButton ? renderPlusButton() : renderPictureItem({ item })
+        }
+        keyExtractor={(item, index) => 
+          item.isPlusButton ? 'plus-button' : item.pictureId
+        }
+        numColumns={3}
+        contentContainerStyle={styles.picturesGrid}
+        columnWrapperStyle={styles.picturesRow}
+      />
+    );
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'pictures':
+        return renderPicturesTab();
+      case 'tab2':
+      case 'tab3':
+      case 'tab4':
+        return (
+          <View style={styles.centerContent}>
+            <Text style={styles.placeholderText}>Tab {activeTab}</Text>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? [] : ['top']}>
       <View style={{ flex: 1 }}>
         {/* Header with user avatar */}
         <View style={styles.header}>
           <View style={styles.headerLeft} />
-          <Text style={styles.headerTitle}>Home</Text>
+          <Text style={styles.headerTitle}>
+            {activeTab === 'pictures' ? 'Photos' : 'Home'}
+          </Text>
           <TouchableOpacity 
             style={styles.avatarButton}
             onPress={() => setShowUserModal(true)}
@@ -63,10 +292,7 @@ export default function LoggedInScreen({ onLogout }) {
 
         {/* Main content area */}
         <View style={styles.content}>
-          {/* Content will go here based on active tab */}
-          <Text style={styles.placeholderText}>
-            {activeTab === 'pictures' ? 'Pictures View' : `Tab ${activeTab}`}
-          </Text>
+          {renderContent()}
         </View>
 
         {/* Bottom Navigation Bar */}
@@ -174,7 +400,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f4c542',
-    paddingTop: Platform.OS === 'ios' ? 50 : 0, // Manual padding for iOS, SafeAreaView handles Android
+    paddingTop: Platform.OS === 'ios' ? 50 : 0,
   },
   header: {
     flexDirection: 'row',
@@ -207,6 +433,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    padding: 0,
+  },
+  centerContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -215,6 +445,53 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#020618ff',
+  },
+  picturesGrid: {
+    padding: 10,
+  },
+  picturesRow: {
+    justifyContent: 'flex-start',
+    marginBottom: 10,
+  },
+  pictureItem: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    marginHorizontal: 5,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#eceefaff',
+  },
+  pictureImage: {
+    width: '100%',
+    height: '100%',
+  },
+  plusButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#020618ff',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#020618ff',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 15,
+  },
+  emptyPlusButton: {
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#020618ff',
+    marginTop: 10,
   },
   navbar: {
     flexDirection: 'row',
@@ -238,9 +515,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
   },
-  navButtonActive: {
-    // Optional: add background highlight for active button
-  },
+  navButtonActive: {},
   navText: {
     fontSize: 12,
     color: '#666',
