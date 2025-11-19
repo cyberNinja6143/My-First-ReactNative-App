@@ -7,7 +7,8 @@ import {
   Modal, 
   ActivityIndicator, 
   Platform,
-  Animated
+  Animated,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { retrieveUser, getStoredToken } from '../Routes';
@@ -15,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import MyPhotosScreen from '../screens/PostLogin/MyPhotosScreen';
 import ExploreScreen from '../screens/PostLogin/ExploreScreen';
+
+const { width, height } = Dimensions.get('window');
 
 export default function LoggedInScreen({ onLogout }) {
   const [userInfo, setUserInfo] = useState(null);
@@ -119,6 +122,13 @@ export default function LoggedInScreen({ onLogout }) {
   return (
     <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? [] : ['top']}>
       <View style={{ flex: 1 }}>
+        {/* Static Diagonal Lines Background */}
+        <View style={styles.linesContainer}>
+          <View style={styles.diagonalLine} />
+          <View style={[styles.diagonalLine, styles.diagonalLine2]} />
+          <View style={[styles.diagonalLine, styles.diagonalLine3]} />
+        </View>
+
         {/* Header with user avatar */}
         <View style={styles.header}>
           <View style={styles.headerLeft} />
@@ -229,13 +239,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4c542',
     paddingTop: Platform.OS === 'ios' ? 50 : 0,
   },
+  linesContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  diagonalLine: {
+    position: 'absolute',
+    width: Math.sqrt(width * width + height * height) * 1.5,
+    height: 4,
+    backgroundColor: '#DAA520',
+    top: '50%',
+    left: '50%',
+    marginLeft: -Math.sqrt(width * width + height * height) * 0.75,
+    marginTop: -2,
+    transform: [{ rotate: '45deg' }],
+  },
+  diagonalLine2: {
+    marginTop: -30,
+  },
+  diagonalLine3: {
+    marginTop: 26,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#f4c542',
+    backgroundColor: 'transparent',
+    zIndex: 10,
   },
   headerLeft: {
     width: 40,
@@ -277,6 +313,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+    zIndex: 10,
   },
   navButton: {
     flex: 1,
