@@ -8,10 +8,11 @@ import {
   ActivityIndicator, 
   Platform,
   Animated,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { retrieveUser, getStoredToken } from '../Routes';
+import { retrieveUser, getStoredToken, deleteUser } from '../Routes';
 import { Ionicons } from '@expo/vector-icons';
 
 import MyPhotosScreen from '../screens/PostLogin/MyPhotosScreen';
@@ -23,6 +24,8 @@ export default function LoggedInScreen({ onLogout }) {
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [activeTab, setActiveTab] = useState('pictures');
   
   // Animation values
@@ -95,6 +98,62 @@ export default function LoggedInScreen({ onLogout }) {
   const handleLogout = () => {
     setShowUserModal(false);
     onLogout();
+  };
+
+  const handleDeleteAccountPress = () => {
+    setShowUserModal(false);
+    setTimeout(() => {
+      setShowDeleteConfirm(true);
+    }, 300);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userInfo?.uuid) {
+      Alert.alert('Error', 'Unable to delete account. User information not found.');
+      return;
+    }
+
+    setDeletingAccount(true);
+
+    try {
+      const token = await getStoredToken();
+      if (!token) {
+        Alert.alert('Error', 'Authentication token not found. Please log in again.');
+        setDeletingAccount(false);
+        setShowDeleteConfirm(false);
+        return;
+      }
+
+      const result = await deleteUser(token, userInfo.uuid);
+
+      if (result.success) {
+        setShowDeleteConfirm(false);
+        Alert.alert(
+          'Account Deleted',
+          'Your account has been successfully deleted.',
+          [
+            {
+              text: 'OK',
+              onPress: () => onLogout(),
+            },
+          ],
+          { cancelable: false }
+        );
+      } else {
+        setDeletingAccount(false);
+        Alert.alert(
+          'Deletion Failed',
+          result.message || 'Unable to delete your account. Please try again later.'
+        );
+      }
+    } catch (error) {
+      setDeletingAccount(false);
+      console.error('Delete account error:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred while deleting your account.'
+      );
+    }
   };
 
   const getHeaderTitle = () => {
@@ -225,8 +284,56 @@ export default function LoggedInScreen({ onLogout }) {
               >
                 <Text style={styles.logoutButtonText}>Logout</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.deleteAccountButton}
+                onPress={handleDeleteAccountPress}
+              >
+                <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
           </TouchableOpacity>
+        </Modal>
+
+        {/* Delete Account Confirmation Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={showDeleteConfirm}
+          onRequestClose={() => !deletingAccount && setShowDeleteConfirm(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.confirmModalContent}>
+              <Ionicons name="warning-outline" size={60} color="#ff3b30" />
+              
+              <Text style={styles.confirmTitle}>Delete Account?</Text>
+              <Text style={styles.confirmMessage}>
+                This action cannot be undone. All your photos, comments, and data will be permanently deleted.
+              </Text>
+
+              <View style={styles.confirmButtons}>
+                <TouchableOpacity 
+                  style={[styles.confirmButton, styles.cancelButton]}
+                  onPress={() => setShowDeleteConfirm(false)}
+                  disabled={deletingAccount}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.confirmButton, styles.deleteButton]}
+                  onPress={handleDeleteAccount}
+                  disabled={deletingAccount}
+                >
+                  {deletingAccount ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
       </View>
     </SafeAreaView>
@@ -386,10 +493,76 @@ const styles = StyleSheet.create({
     backgroundColor: '#020618ff',
     width: '100%',
     alignItems: 'center',
+    marginBottom: 12,
   },
   logoutButtonText: {
     color: '#eceefaff',
     fontWeight: 'bold',
     fontSize: 18,
+  },
+  deleteAccountButton: {
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: '#020618ff',
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  deleteAccountButtonText: {
+    color: '#eceefaff',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  confirmModalContent: {
+    backgroundColor: '#eceefaff',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    width: '85%',
+    maxWidth: 400,
+  },
+  confirmTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#020618ff',
+    marginTop: 15,
+    marginBottom: 15,
+  },
+  confirmMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 22,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+  },
+  cancelButton: {
+    backgroundColor: '#e0e0e0',
+  },
+  cancelButtonText: {
+    color: '#020618ff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  deleteButton: {
+    backgroundColor: '#ff3b30',
+  },
+  deleteButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

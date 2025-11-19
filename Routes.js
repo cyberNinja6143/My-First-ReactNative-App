@@ -821,3 +821,60 @@ export const updateComment = async (token, commentId, commentText) => {
     };
   }
 };
+
+/**
+ * Delete user route - Deletes the current user's account
+ * @param {string} token - Current JWT token
+ * @param {string} userUUID - User's UUID (must match the authenticated user)
+ * @returns {Object} { success: boolean, errorCode?: string, message?: string }
+ */
+export const deleteUser = async (token, userUUID) => {
+  try {
+    const response = await fetch(`${API_URL}/deleteUser`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        Request: userUUID,
+      }),
+    });
+
+    if (response.status === 200) {
+      // Clear stored token after successful deletion
+      await AsyncStorage.removeItem('jwt_token');
+      
+      return {
+        success: true,
+        message: 'User account deleted successfully',
+      };
+    } else if (response.status === 403) {
+      return {
+        success: false,
+        errorCode: '403',
+        message: 'You do not have permission to delete this account',
+      };
+    } else if (response.status === 409) {
+      const responseText = await response.text();
+      return {
+        success: false,
+        errorCode: '409',
+        message: responseText || 'Could not remove user account',
+      };
+    } else {
+      return {
+        success: false,
+        errorCode: 'unknown',
+        message: 'Failed to delete user account',
+      };
+    }
+  } catch (error) {
+    console.error('Delete user error:', error);
+    return {
+      success: false,
+      errorCode: 'network',
+      message: 'Unable to connect to the server.',
+    };
+  }
+};
